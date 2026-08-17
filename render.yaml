@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: dashboard-cupons-saojoao
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: VTEX_ACCOUNT
+        value: sjdigital
+      - key: VTEX_APP_KEY
+        sync: false
+      - key: VTEX_APP_TOKEN
+        sync: false

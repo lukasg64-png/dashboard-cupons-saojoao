@@ -120,22 +120,46 @@ async function fetchCategoryTree() {
   }
 }
 
+const SEED_FILE = path.join(DATA_DIR, 'vtex_orders_seed.json');
+
 // ── Orders Cache ────────────────────────────────────────────────────────────
 function loadOrdersCache() {
-  if (ordersCache) return ordersCache;
+  if (ordersCache && Object.keys(ordersCache).length > 0) return ordersCache;
+  ordersCache = {};
+
+  // 1. Carregar seed estático se existir
+  if (fs.existsSync(SEED_FILE)) {
+    try {
+      const seed = JSON.parse(fs.readFileSync(SEED_FILE, 'utf-8')) || {};
+      Object.assign(ordersCache, seed);
+      console.log(`[VTEX Sync] Carregados ${Object.keys(seed).length} pedidos do seed.`);
+    } catch (e) {
+      console.error('[VTEX Sync] Erro ao carregar seed:', e.message);
+    }
+  }
+
+  // 2. Mesclar cache dinâmico se existir e for válido
   if (fs.existsSync(CACHE_FILE)) {
     try {
-      ordersCache = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8')) || {};
-      return ordersCache;
+      const cached = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8')) || {};
+      if (Object.keys(cached).length > 0) {
+        Object.assign(ordersCache, cached);
+        console.log(`[VTEX Sync] Carregados ${Object.keys(cached).length} pedidos do cache dinâmico.`);
+      }
     } catch (e) {
       console.error('[VTEX Sync] Erro ao carregar cache:', e.message);
     }
   }
-  ordersCache = {};
+
+  console.log(`[VTEX Sync] Total em memória: ${Object.keys(ordersCache).length} pedidos.`);
   return ordersCache;
 }
 
 async function saveCacheAsync(cacheObj, filePath) {
+  if (!cacheObj || Object.keys(cacheObj).length === 0) {
+    console.warn('[VTEX Sync] Tentativa de salvar cache vazio ignorada para segurança.');
+    return;
+  }
   const tempPath = filePath + '.tmp';
   try {
     const json = JSON.stringify(cacheObj);

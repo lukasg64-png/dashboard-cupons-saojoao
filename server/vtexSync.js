@@ -183,7 +183,7 @@ function pruneCache(cache) {
     return localDate.toISOString().slice(0, 10);
   };
   const keepDates = new Set();
-  for (let i = 0; i <= 15; i++) {
+  for (let i = 0; i <= 7; i++) {
     keepDates.add(getBrtDateStr(i));
   }
   let count = 0;
@@ -193,7 +193,7 @@ function pruneCache(cache) {
       const creation = new Date(order.creationDate);
       const localCreation = new Date(creation.getTime() + (utcOffset * 3600000));
       const brtDateStr = localCreation.toISOString().slice(0, 10);
-      if (!keepDates.has(brtDateStr)) {
+      if (!keepDates.has(brtDateStr) || !order.coupon || order.coupon === 'null' || !String(order.coupon).trim()) {
         delete cache[id];
         count++;
       }
@@ -203,7 +203,7 @@ function pruneCache(cache) {
     }
   }
   if (count > 0) {
-    console.log(`[VTEX Sync] Removidos ${count} pedidos antigos do cache.`);
+    console.log(`[VTEX Sync] Removidos ${count} pedidos fora da janela de 7 dias ou sem cupom.`);
   }
 }
 
@@ -407,7 +407,7 @@ async function syncVtexData(forceFull = false) {
   try {
     pruneCache(cache);
     const targetDays = (forceFull || !lastSyncTime) 
-      ? Array.from({ length: 16 }, (_, i) => i) 
+      ? Array.from({ length: 8 }, (_, i) => i) 
       : [0, 1];
       
     for (const d of targetDays) {

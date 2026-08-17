@@ -744,8 +744,8 @@ app.listen(PORT, () => {
     vtexSync.syncVtexData().catch(err => console.error('[Startup Sync]', err.message));
   }, 5000);
 
-  // Re-sync a cada 10 minutos
+  // Re-sync a cada 1 hora (apenas últimos 7 dias)
   setInterval(() => {
     vtexSync.syncVtexData().catch(err => console.error('[Interval Sync]', err.message));
-  }, 10 * 60 * 1000);
+  }, 60 * 60 * 1000);
 });

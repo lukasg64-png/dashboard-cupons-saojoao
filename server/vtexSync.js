@@ -17,11 +17,14 @@ const CACHE_FILE = path.join(DATA_DIR, 'vtex_orders_cache.json');
 const CATEGORY_MAP_FILE = path.join(DATA_DIR, 'category_map.json');
 
 const account = process.env.VTEX_ACCOUNT || 'sjdigital';
+const appKey = process.env.VTEX_APP_KEY || 'vtexappkey-sjdigital-NBIBYX';
+const appToken = process.env.VTEX_APP_TOKEN || 'FMNZUETMELXKBOSLMUVZKXCHVBSGIZOPKZDTNWFECKBNISTKJABVJIALYEYPWIEGJTBNJFTFIOXRTKHIFXSMOFIJOXFDNWWCTUBMFLFRYRPZDBNWMZRQFIAABGXNSJNO';
+
 const headers = {
   'Accept': 'application/json',
   'Content-Type': 'application/json',
-  'X-VTEX-API-AppKey': process.env.VTEX_APP_KEY,
-  'X-VTEX-API-AppToken': process.env.VTEX_APP_TOKEN,
+  'X-VTEX-API-AppKey': appKey,
+  'X-VTEX-API-AppToken': appToken,
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 };
 
@@ -354,7 +357,7 @@ async function syncPeriod(daysAgo, cache) {
 }
 
 async function syncVtexData(forceFull = false) {
-  if (!process.env.VTEX_APP_KEY || !process.env.VTEX_APP_TOKEN) {
+  if (!appKey || !appToken) {
     console.log('[VTEX Sync] Chaves VTEX não configuradas. Ignorando.');
     return;
   }

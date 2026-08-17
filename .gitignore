@@ -7,4 +7,3 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-server/data/vtex_orders_cache.json

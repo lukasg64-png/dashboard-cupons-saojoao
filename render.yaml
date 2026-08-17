@@ -2,7 +2,9 @@ services:
   - type: web
     name: dashboard-cupons-saojoao
     runtime: node
-    plan: starter
+    plan: free
+    branch: main
+    autoDeploy: true
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:

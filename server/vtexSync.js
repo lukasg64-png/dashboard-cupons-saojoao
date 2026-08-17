@@ -421,10 +421,18 @@ async function syncVtexData(forceFull = false) {
   }
 }
 
+function setOrdersSeed(newOrders) {
+  const cache = loadOrdersCache();
+  Object.assign(cache, newOrders);
+  saveCacheAsync(cache, CACHE_FILE);
+  return Object.keys(cache).length;
+}
+
 module.exports = {
   syncVtexData,
   getSyncState: () => ({ isSyncing, progressPercent, lastSyncTime }),
   getOrdersCache: () => loadOrdersCache(),
   getCategoryMap: () => loadCategoryMap(),
   resolveCategoryName,
+  setOrdersSeed,
 };

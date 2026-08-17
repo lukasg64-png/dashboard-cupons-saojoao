@@ -268,7 +268,8 @@ loadFiliaisCadastro();
 // ── Middleware ───────────────────────────────────────────────────────────────
 app.use(compression());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '60mb' }));
+app.use(express.urlencoded({ extended: true, limit: '60mb' }));
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function getBrtDateStr(daysAgo = 0) {
@@ -705,6 +706,22 @@ app.post('/api/vtex-sync', async (req, res) => {
   vtexSync.syncVtexData(forceFull).catch(err =>
     console.error('[Manual Sync] Falhou:', err.message)
   );
+});
+
+app.post('/api/admin/seed', (req, res) => {
+  try {
+    const { token, orders } = req.body;
+    if (token !== 'sjdigital-sync-2026') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    if (!orders || typeof orders !== 'object') {
+      return res.status(400).json({ error: 'Invalid orders payload' });
+    }
+    const count = vtexSync.setOrdersSeed(orders);
+    res.json({ status: 'ok', count, message: `Seed atualizado com ${count} pedidos.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── Servir Frontend ─────────────────────────────────────────────────────────

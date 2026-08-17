@@ -183,7 +183,7 @@ function pruneCache(cache) {
     return localDate.toISOString().slice(0, 10);
   };
   const keepDates = new Set();
-  for (let i = 0; i <= 7; i++) {
+  for (let i = 0; i <= 15; i++) {
     keepDates.add(getBrtDateStr(i));
   }
   let count = 0;
@@ -203,7 +203,7 @@ function pruneCache(cache) {
     }
   }
   if (count > 0) {
-    console.log(`[VTEX Sync] Removidos ${count} pedidos fora da janela de 7 dias ou sem cupom.`);
+    console.log(`[VTEX Sync] Removidos ${count} pedidos fora da janela de 15 dias ou sem cupom.`);
   }
 }
 
@@ -407,7 +407,7 @@ async function syncVtexData(forceFull = false) {
   try {
     pruneCache(cache);
     const targetDays = (forceFull || !lastSyncTime) 
-      ? Array.from({ length: 8 }, (_, i) => i) 
+      ? Array.from({ length: 16 }, (_, i) => i) 
       : [0, 1];
       
     for (const d of targetDays) {

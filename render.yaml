@@ -15,6 +15,6 @@ services:
       - key: VTEX_ACCOUNT
         value: sjdigital
       - key: VTEX_APP_KEY
-        sync: false
+        value: vtexappkey-sjdigital-NBIBYX
       - key: VTEX_APP_TOKEN
-        sync: false
+        value: FMNZUETMELXKBOSLMUVZKXCHVBSGIZOPKZDTNWFECKBNISTKJABVJIALYEYPWIEGJTBNJFTFIOXRTKHIFXSMOFIJOXFDNWWCTUBMFLFRYRPZDBNWMZRQFIAABGXNSJNO

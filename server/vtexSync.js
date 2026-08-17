@@ -16,9 +16,9 @@ const DATA_DIR = path.join(__dirname, 'data');
 const CACHE_FILE = path.join(DATA_DIR, 'vtex_orders_cache.json');
 const CATEGORY_MAP_FILE = path.join(DATA_DIR, 'category_map.json');
 
-const account = process.env.VTEX_ACCOUNT || 'sjdigital';
-const appKey = process.env.VTEX_APP_KEY || 'vtexappkey-sjdigital-NBIBYX';
-const appToken = process.env.VTEX_APP_TOKEN || 'FMNZUETMELXKBOSLMUVZKXCHVBSGIZOPKZDTNWFECKBNISTKJABVJIALYEYPWIEGJTBNJFTFIOXRTKHIFXSMOFIJOXFDNWWCTUBMFLFRYRPZDBNWMZRQFIAABGXNSJNO';
+const account = (process.env.VTEX_ACCOUNT && process.env.VTEX_ACCOUNT.trim()) || 'sjdigital';
+const appKey = (process.env.VTEX_APP_KEY && process.env.VTEX_APP_KEY.trim()) || 'vtexappkey-sjdigital-NBIBYX';
+const appToken = (process.env.VTEX_APP_TOKEN && process.env.VTEX_APP_TOKEN.trim()) || 'FMNZUETMELXKBOSLMUVZKXCHVBSGIZOPKZDTNWFECKBNISTKJABVJIALYEYPWIEGJTBNJFTFIOXRTKHIFXSMOFIJOXFDNWWCTUBMFLFRYRPZDBNWMZRQFIAABGXNSJNO';
 
 const headers = {
   'Accept': 'application/json',
@@ -32,6 +32,8 @@ const headers = {
 let isSyncing = false;
 let progressPercent = 0;
 let lastSyncTime = null;
+let lastSyncError = null;
+let lastSyncStats = { fetchedList: 0, newDetails: 0 };
 let ordersCache = null;
 let categoryMap = null;
 
@@ -357,13 +359,15 @@ async function syncPeriod(daysAgo, cache) {
           hasMore = false;
         }
       } catch (e) {
-        console.error(`[VTEX Sync] Erro página ${page} bloco ${b+1} dia=${daysAgo}:`, e.message);
+        lastSyncError = `Página ${page} bloco ${b+1} dia=${daysAgo}: ${e.response?.status || ''} ${e.message}`;
+        console.error(`[VTEX Sync] ${lastSyncError}`);
         hasMore = false;
       }
       await new Promise(r => setTimeout(r, 200));
     }
   }
 
+  lastSyncStats.fetchedList = allListItems.length;
   const orderIds = Array.from(new Set(allListItems.map(o => o.orderId)));
   if (orderIds.length > 0) {
     const toFetch = orderIds.filter(id => {
@@ -374,6 +378,7 @@ async function syncPeriod(daysAgo, cache) {
       return false;
     });
 
+    lastSyncStats.newDetails = toFetch.length;
     if (toFetch.length > 0) {
       await fetchOrderDetails(toFetch, cache);
     }
@@ -388,6 +393,7 @@ async function syncVtexData(forceFull = false) {
   if (isSyncing) return;
   isSyncing = true;
   progressPercent = 0;
+  lastSyncError = null;
   console.log(`[VTEX Sync] Iniciando sincronização (forceFull=${forceFull})...`);
   
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -414,7 +420,8 @@ async function syncVtexData(forceFull = false) {
     lastSyncTime = new Date().toISOString();
     console.log(`[VTEX Sync] Concluído com sucesso às ${lastSyncTime}. ${Object.keys(cache).length} pedidos no cache.`);
   } catch (err) {
-    console.error('[VTEX Sync] Falha geral:', err.message);
+    lastSyncError = `Falha geral: ${err.message}`;
+    console.error('[VTEX Sync]', lastSyncError);
   } finally {
     isSyncing = false;
     progressPercent = 100;
@@ -430,7 +437,7 @@ function setOrdersSeed(newOrders) {
 
 module.exports = {
   syncVtexData,
-  getSyncState: () => ({ isSyncing, progressPercent, lastSyncTime }),
+  getSyncState: () => ({ isSyncing, progressPercent, lastSyncTime, lastSyncError, lastSyncStats }),
   getOrdersCache: () => loadOrdersCache(),
   getCategoryMap: () => loadCategoryMap(),
   resolveCategoryName,

@@ -282,21 +282,26 @@ async function fetchOrderDetails(orderIds, cache) {
   }
 }
 
-async function syncPeriod(daysAgo, cache) {
+async function syncPeriod(daysAgo, cache, forceAllBlocks = true) {
   let startFromIso = null;
   const utcOffset = -3;
   const targetBrt = new Date(Date.now() + utcOffset * 3600000 - daysAgo * 86400000).toISOString().slice(0, 10);
-  const dayOnly = Object.values(cache).filter(o => {
-    if (!o.creationDate) return false;
-    const brt = new Date(new Date(o.creationDate).getTime() + utcOffset * 3600000);
-    return brt.toISOString().slice(0, 10) === targetBrt;
-  });
   
-  if (dayOnly.length > 0) {
-    const latestMs = Math.max(...dayOnly.map(o => new Date(o.creationDate).getTime()));
-    const fromMs = latestMs - 10 * 60 * 1000;
-    startFromIso = new Date(fromMs).toISOString().slice(0, 19) + 'Z';
-    console.log(`[VTEX Sync] Sync incremental dia=${daysAgo} a partir de ${startFromIso}`);
+  if (!forceAllBlocks) {
+    const dayOnly = Object.values(cache).filter(o => {
+      if (!o.creationDate) return false;
+      const brt = new Date(new Date(o.creationDate).getTime() + utcOffset * 3600000);
+      return brt.toISOString().slice(0, 10) === targetBrt;
+    });
+    
+    if (dayOnly.length > 0) {
+      const latestMs = Math.max(...dayOnly.map(o => new Date(o.creationDate).getTime()));
+      const fromMs = latestMs - 10 * 60 * 1000;
+      startFromIso = new Date(fromMs).toISOString().slice(0, 19) + 'Z';
+      console.log(`[VTEX Sync] Sync incremental dia=${daysAgo} a partir de ${startFromIso}`);
+    }
+  } else {
+    console.log(`[VTEX Sync] Varredura completa de todos os 4 blocos do dia=${daysAgo} (00h às 23h59 BRT)`);
   }
 
   const blocks = getDayRange(daysAgo, startFromIso);
@@ -379,7 +384,7 @@ async function syncVtexData(forceFull = false) {
       
     for (const d of targetDays) {
       console.log(`[VTEX Sync] Processando dia ${d}...`);
-      await syncPeriod(d, cache);
+      await syncPeriod(d, cache, forceFull || d <= 2);
       await saveCacheAsync(cache, CACHE_FILE);
     }
     pruneCache(cache);

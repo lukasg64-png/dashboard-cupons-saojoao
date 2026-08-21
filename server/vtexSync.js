@@ -324,7 +324,7 @@ async function fetchOrderDetails(orderIds, cache) {
   }
 }
 
-async function syncPeriod(daysAgo, cache) {
+async function syncPeriod(daysAgo, cache, forceFull = false) {
   let startFromIso = null;
   const utcOffset = -3;
   const targetBrt = new Date(Date.now() + utcOffset * 3600000 - daysAgo * 86400000).toISOString().slice(0, 10);
@@ -334,11 +334,12 @@ async function syncPeriod(daysAgo, cache) {
     return brt.toISOString().slice(0, 10) === targetBrt;
   });
   
-  if (dayOnly.length > 0) {
+  // Apenas faz sync incremental a partir do último horário se for o dia de HOJE (daysAgo === 0) e não for forceFull
+  if (daysAgo === 0 && dayOnly.length > 0 && !forceFull) {
     const latestMs = Math.max(...dayOnly.map(o => new Date(o.creationDate).getTime()));
     const fromMs = latestMs - 10 * 60 * 1000;
     startFromIso = new Date(fromMs).toISOString().slice(0, 19) + 'Z';
-    console.log(`[VTEX Sync] Sync incremental dia=${daysAgo} a partir de ${startFromIso}`);
+    console.log(`[VTEX Sync] Sync incremental hoje a partir de ${startFromIso}`);
   }
 
   const blocks = getDayRange(daysAgo, startFromIso);
@@ -443,7 +444,7 @@ async function syncVtexData(forceFull = false) {
       
     for (const d of targetDays) {
       console.log(`[VTEX Sync] Processando dia ${d}...`);
-      await syncPeriod(d, cache);
+      await syncPeriod(d, cache, forceFull);
       await saveCacheAsync(cache, CACHE_FILE);
     }
     pruneCache(cache);

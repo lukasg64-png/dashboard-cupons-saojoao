@@ -16,15 +16,12 @@ const DATA_DIR = path.join(__dirname, 'data');
 const CACHE_FILE = path.join(DATA_DIR, 'vtex_orders_cache.json');
 const CATEGORY_MAP_FILE = path.join(DATA_DIR, 'category_map.json');
 
-const account = (process.env.VTEX_ACCOUNT && process.env.VTEX_ACCOUNT.trim()) || 'sjdigital';
-const appKey = (process.env.VTEX_APP_KEY && process.env.VTEX_APP_KEY.trim()) || 'vtexappkey-sjdigital-NBIBYX';
-const appToken = (process.env.VTEX_APP_TOKEN && process.env.VTEX_APP_TOKEN.trim()) || 'FMNZUETMELXKBOSLMUVZKXCHVBSGIZOPKZDTNWFECKBNISTKJABVJIALYEYPWIEGJTBNJFTFIOXRTKHIFXSMOFIJOXFDNWWCTUBMFLFRYRPZDBNWMZRQFIAABGXNSJNO';
-
+const account = process.env.VTEX_ACCOUNT || 'sjdigital';
 const headers = {
   'Accept': 'application/json',
   'Content-Type': 'application/json',
-  'X-VTEX-API-AppKey': appKey,
-  'X-VTEX-API-AppToken': appToken,
+  'X-VTEX-API-AppKey': process.env.VTEX_APP_KEY,
+  'X-VTEX-API-AppToken': process.env.VTEX_APP_TOKEN,
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 };
 
@@ -32,8 +29,6 @@ const headers = {
 let isSyncing = false;
 let progressPercent = 0;
 let lastSyncTime = null;
-let lastSyncError = null;
-let lastSyncStats = { fetchedList: 0, newDetails: 0 };
 let ordersCache = null;
 let categoryMap = null;
 
@@ -122,46 +117,22 @@ async function fetchCategoryTree() {
   }
 }
 
-const SEED_FILE = path.join(DATA_DIR, 'vtex_orders_seed.json');
-
 // ── Orders Cache ────────────────────────────────────────────────────────────
 function loadOrdersCache() {
-  if (ordersCache && Object.keys(ordersCache).length > 0) return ordersCache;
-  ordersCache = {};
-
-  // 1. Carregar seed estático se existir
-  if (fs.existsSync(SEED_FILE)) {
-    try {
-      const seed = JSON.parse(fs.readFileSync(SEED_FILE, 'utf-8')) || {};
-      Object.assign(ordersCache, seed);
-      console.log(`[VTEX Sync] Carregados ${Object.keys(seed).length} pedidos do seed.`);
-    } catch (e) {
-      console.error('[VTEX Sync] Erro ao carregar seed:', e.message);
-    }
-  }
-
-  // 2. Mesclar cache dinâmico se existir e for válido
+  if (ordersCache) return ordersCache;
   if (fs.existsSync(CACHE_FILE)) {
     try {
-      const cached = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8')) || {};
-      if (Object.keys(cached).length > 0) {
-        Object.assign(ordersCache, cached);
-        console.log(`[VTEX Sync] Carregados ${Object.keys(cached).length} pedidos do cache dinâmico.`);
-      }
+      ordersCache = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8')) || {};
+      return ordersCache;
     } catch (e) {
       console.error('[VTEX Sync] Erro ao carregar cache:', e.message);
     }
   }
-
-  console.log(`[VTEX Sync] Total em memória: ${Object.keys(ordersCache).length} pedidos.`);
+  ordersCache = {};
   return ordersCache;
 }
 
 async function saveCacheAsync(cacheObj, filePath) {
-  if (!cacheObj || Object.keys(cacheObj).length === 0) {
-    console.warn('[VTEX Sync] Tentativa de salvar cache vazio ignorada para segurança.');
-    return;
-  }
   const tempPath = filePath + '.tmp';
   try {
     const json = JSON.stringify(cacheObj);
@@ -203,29 +174,16 @@ function pruneCache(cache) {
     }
   }
   if (count > 0) {
-    console.log(`[VTEX Sync] Removidos ${count} pedidos fora da janela de 15 dias.`);
+    console.log(`[VTEX Sync] Removidos ${count} pedidos antigos do cache.`);
   }
 }
 
 /**
- * minifyOrder ENRIQUECIDO — preserva dados de itens para análise se tiver cupom,
- * ou guarda apenas marcador mínimo para não re-buscar pedidos sem cupom.
+ * minifyOrder ENRIQUECIDO — preserva dados de itens para análise
  */
 function minifyOrder(order) {
   if (!order) return null;
   
-  const coupon = order.marketingData?.coupon || null;
-  const hasCoupon = coupon && coupon !== 'null' && String(coupon).trim() !== '';
-
-  if (!hasCoupon) {
-    return {
-      orderId: order.orderId,
-      status: order.status,
-      creationDate: order.creationDate,
-      coupon: null
-    };
-  }
-
   const items = (order.items || []).map(item => ({
     productId: item.productId,
     skuId: item.id,
@@ -247,7 +205,7 @@ function minifyOrder(order) {
     creationDate: order.creationDate,
     value: order.value,
     sellers: (order.sellers || []).map(s => ({ id: s.id, name: s.name })),
-    coupon: coupon,
+    coupon: order.marketingData?.coupon || null,
     items,
     itemsCount: items.reduce((sum, item) => sum + (item.quantity || 0), 0)
   };
@@ -324,22 +282,26 @@ async function fetchOrderDetails(orderIds, cache) {
   }
 }
 
-async function syncPeriod(daysAgo, cache, forceFull = false) {
+async function syncPeriod(daysAgo, cache, forceAllBlocks = true) {
   let startFromIso = null;
   const utcOffset = -3;
   const targetBrt = new Date(Date.now() + utcOffset * 3600000 - daysAgo * 86400000).toISOString().slice(0, 10);
-  const dayOnly = Object.values(cache).filter(o => {
-    if (!o.creationDate) return false;
-    const brt = new Date(new Date(o.creationDate).getTime() + utcOffset * 3600000);
-    return brt.toISOString().slice(0, 10) === targetBrt;
-  });
   
-  // Apenas faz sync incremental a partir do último horário se for o dia de HOJE (daysAgo === 0) e não for forceFull
-  if (daysAgo === 0 && dayOnly.length > 0 && !forceFull) {
-    const latestMs = Math.max(...dayOnly.map(o => new Date(o.creationDate).getTime()));
-    const fromMs = latestMs - 10 * 60 * 1000;
-    startFromIso = new Date(fromMs).toISOString().slice(0, 19) + 'Z';
-    console.log(`[VTEX Sync] Sync incremental hoje a partir de ${startFromIso}`);
+  if (!forceAllBlocks) {
+    const dayOnly = Object.values(cache).filter(o => {
+      if (!o.creationDate) return false;
+      const brt = new Date(new Date(o.creationDate).getTime() + utcOffset * 3600000);
+      return brt.toISOString().slice(0, 10) === targetBrt;
+    });
+    
+    if (dayOnly.length > 0) {
+      const latestMs = Math.max(...dayOnly.map(o => new Date(o.creationDate).getTime()));
+      const fromMs = latestMs - 10 * 60 * 1000;
+      startFromIso = new Date(fromMs).toISOString().slice(0, 19) + 'Z';
+      console.log(`[VTEX Sync] Sync incremental dia=${daysAgo} a partir de ${startFromIso}`);
+    }
+  } else {
+    console.log(`[VTEX Sync] Varredura completa de todos os 4 blocos do dia=${daysAgo} (00h às 23h59 BRT)`);
   }
 
   const blocks = getDayRange(daysAgo, startFromIso);
@@ -373,59 +335,37 @@ async function syncPeriod(daysAgo, cache, forceFull = false) {
           hasMore = false;
         }
       } catch (e) {
-        lastSyncError = `Página ${page} bloco ${b+1} dia=${daysAgo}: ${e.response?.status || ''} ${e.message}`;
-        console.error(`[VTEX Sync] ${lastSyncError}`);
+        console.error(`[VTEX Sync] Erro página ${page} bloco ${b+1} dia=${daysAgo}:`, e.message);
         hasMore = false;
       }
       await new Promise(r => setTimeout(r, 200));
     }
   }
 
-  lastSyncStats.fetchedList = allListItems.length;
   const orderIds = Array.from(new Set(allListItems.map(o => o.orderId)));
   if (orderIds.length > 0) {
     const toFetch = orderIds.filter(id => {
       const cached = cache[id];
       if (!cached) return true;
-      if (cached.coupon === null) return false;
       if (!cached.sellers || cached.sellers.length === 0) return true;
       if (!cached.items || cached.items.length === 0) return true; // Re-fetch se sem itens
       return false;
     });
 
-    lastSyncStats.newDetails = toFetch.length;
     if (toFetch.length > 0) {
       await fetchOrderDetails(toFetch, cache);
     }
   }
 }
 
-function saveOrdersSeed(cacheObj) {
-  if (!cacheObj) return {};
-  const seed = {};
-  for (const [id, o] of Object.entries(cacheObj)) {
-    if (o && o.coupon && o.coupon !== 'null' && String(o.coupon).trim()) {
-      seed[id] = o;
-    }
-  }
-  try {
-    fs.writeFileSync(SEED_FILE, JSON.stringify(seed), 'utf-8');
-    console.log(`[VTEX Sync] Seed salvo com ${Object.keys(seed).length} pedidos com cupom.`);
-  } catch (err) {
-    console.error('[VTEX Sync] Erro ao salvar seed:', err.message);
-  }
-  return seed;
-}
-
 async function syncVtexData(forceFull = false) {
-  if (!appKey || !appToken) {
+  if (!process.env.VTEX_APP_KEY || !process.env.VTEX_APP_TOKEN) {
     console.log('[VTEX Sync] Chaves VTEX não configuradas. Ignorando.');
     return;
   }
   if (isSyncing) return;
   isSyncing = true;
   progressPercent = 0;
-  lastSyncError = null;
   console.log(`[VTEX Sync] Iniciando sincronização (forceFull=${forceFull})...`);
   
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -444,36 +384,25 @@ async function syncVtexData(forceFull = false) {
       
     for (const d of targetDays) {
       console.log(`[VTEX Sync] Processando dia ${d}...`);
-      await syncPeriod(d, cache, forceFull);
+      await syncPeriod(d, cache, forceFull || d <= 2);
       await saveCacheAsync(cache, CACHE_FILE);
     }
     pruneCache(cache);
     await saveCacheAsync(cache, CACHE_FILE);
-    saveOrdersSeed(cache);
     lastSyncTime = new Date().toISOString();
     console.log(`[VTEX Sync] Concluído com sucesso às ${lastSyncTime}. ${Object.keys(cache).length} pedidos no cache.`);
   } catch (err) {
-    lastSyncError = `Falha geral: ${err.message}`;
-    console.error('[VTEX Sync]', lastSyncError);
+    console.error('[VTEX Sync] Falha geral:', err.message);
   } finally {
     isSyncing = false;
     progressPercent = 100;
   }
 }
 
-function setOrdersSeed(newOrders) {
-  const cache = loadOrdersCache();
-  Object.assign(cache, newOrders);
-  saveCacheAsync(cache, CACHE_FILE);
-  return Object.keys(cache).length;
-}
-
 module.exports = {
   syncVtexData,
-  getSyncState: () => ({ isSyncing, progressPercent, lastSyncTime, lastSyncError, lastSyncStats }),
+  getSyncState: () => ({ isSyncing, progressPercent, lastSyncTime }),
   getOrdersCache: () => loadOrdersCache(),
   getCategoryMap: () => loadCategoryMap(),
   resolveCategoryName,
-  setOrdersSeed,
-  saveOrdersSeed,
 };

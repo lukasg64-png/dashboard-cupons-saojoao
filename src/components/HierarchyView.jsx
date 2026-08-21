@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   ChevronRight, ChevronDown, Building2, Users, User, MapPin, 
   TrendingUp, BarChart3, Search, X, Maximize2, Minimize2, Eye, 
-  ArrowUpDown, Sparkles, Filter
+  ArrowUpDown, Sparkles, Filter, Download
 } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -147,6 +147,134 @@ export default function HierarchyView({ data = [] }) {
     setOpenDirs(new Set(['C', 'L']));
     setOpenDist(new Set());
     setOpenCoord(new Set());
+  };
+
+  const exportHierarchyToExcel = () => {
+    try {
+      const rows = [];
+      rows.push([
+        "Nível",
+        "Diretoria",
+        "Distrital",
+        "Coordenador",
+        "Filial / Loja",
+        "Pedidos",
+        "Faturamento (R$)",
+        "Ticket Médio (R$)",
+        "Itens",
+        "% Desconto",
+        "Total Desconto (R$)",
+        "Cupons Únicos"
+      ]);
+
+      rows.push([
+        "TOTAL GERAL",
+        "-",
+        "-",
+        "-",
+        "-",
+        totalGeral.pedidos,
+        totalGeral.valor,
+        parseFloat(totalGeral.ticket.toFixed(2)),
+        totalGeral.itens,
+        parseFloat(totalGeral.descontoPct.toFixed(2)),
+        totalGeral.desconto,
+        totalGeral.cuponsUnicos
+      ]);
+
+      Object.entries(tree).forEach(([dirKey, dirObj]) => {
+        const dirAgg = aggregate(dirObj.orders);
+        rows.push([
+          "DIRETORIA",
+          `Diretoria ${dirKey}`,
+          "-",
+          "-",
+          "-",
+          dirAgg.pedidos,
+          dirAgg.valor,
+          parseFloat(dirAgg.ticket.toFixed(2)),
+          dirAgg.itens,
+          parseFloat(dirAgg.descontoPct.toFixed(2)),
+          dirAgg.desconto,
+          dirAgg.cuponsUnicos
+        ]);
+
+        Object.entries(dirObj.distritais).forEach(([distKey, distObj]) => {
+          const distAgg = aggregate(distObj.orders);
+          rows.push([
+            "DISTRITAL",
+            `Diretoria ${dirKey}`,
+            distKey,
+            "-",
+            "-",
+            distAgg.pedidos,
+            distAgg.valor,
+            parseFloat(distAgg.ticket.toFixed(2)),
+            distAgg.itens,
+            parseFloat(distAgg.descontoPct.toFixed(2)),
+            distAgg.desconto,
+            distAgg.cuponsUnicos
+          ]);
+
+          Object.entries(distObj.coordenadores).forEach(([coordKey, coordObj]) => {
+            const coordAgg = aggregate(coordObj.orders);
+            rows.push([
+              "COORDENADOR",
+              `Diretoria ${dirKey}`,
+              distKey,
+              coordKey,
+              "-",
+              coordAgg.pedidos,
+              coordAgg.valor,
+              parseFloat(coordAgg.ticket.toFixed(2)),
+              coordAgg.itens,
+              parseFloat(coordAgg.descontoPct.toFixed(2)),
+              coordAgg.desconto,
+              coordAgg.cuponsUnicos
+            ]);
+
+            Object.entries(coordObj.filiais).forEach(([filKey, filObj]) => {
+              const filAgg = aggregate(filObj.orders);
+              rows.push([
+                "LOJA",
+                `Diretoria ${dirKey}`,
+                distKey,
+                coordKey,
+                filKey,
+                filAgg.pedidos,
+                filAgg.valor,
+                parseFloat(filAgg.ticket.toFixed(2)),
+                filAgg.itens,
+                parseFloat(filAgg.descontoPct.toFixed(2)),
+                filAgg.desconto,
+                filAgg.cuponsUnicos
+              ]);
+            });
+          });
+        });
+      });
+
+      if (typeof window !== 'undefined') {
+        import('xlsx').then(XLSX => {
+          const ws = XLSX.utils.aoa_to_sheet(rows);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Hierarquia");
+          const dateStr = new Date().toISOString().slice(0, 10);
+          XLSX.writeFile(wb, `Hierarquia_Cupons_Sao_Joao_${dateStr}.xlsx`);
+        }).catch(() => {
+          const csvContent = "\uFEFF" + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(";")).join("\n");
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.setAttribute("download", `Hierarquia_Cupons_Sao_Joao_${new Date().toISOString().slice(0, 10)}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao exportar hierarquia:', err);
+    }
   };
 
   const [rankingDimension, setRankingDimension] = useState('distritais'); // 'distritais' | 'coordenadores' | 'lojas'
@@ -457,6 +585,19 @@ export default function HierarchyView({ data = [] }) {
               </button>
               <button onClick={collapseAll} className="table-action-btn" title="Recolher toda a árvore">
                 <Minimize2 size={11} /> Recolher Tudo
+              </button>
+              <button 
+                onClick={exportHierarchyToExcel} 
+                className="table-action-btn" 
+                style={{ 
+                  color: '#107c41', 
+                  borderColor: 'rgba(16, 124, 65, 0.35)', 
+                  background: 'rgba(16, 124, 65, 0.08)',
+                  fontWeight: 600
+                }} 
+                title="Baixar Hierarquia completa em Excel (.xlsx)"
+              >
+                <Download size={11} /> Baixar Excel (.xlsx)
               </button>
             </div>
           </div>

@@ -193,7 +193,7 @@ function pruneCache(cache) {
       const creation = new Date(order.creationDate);
       const localCreation = new Date(creation.getTime() + (utcOffset * 3600000));
       const brtDateStr = localCreation.toISOString().slice(0, 10);
-      if (!keepDates.has(brtDateStr) || !order.coupon || order.coupon === 'null' || !String(order.coupon).trim()) {
+      if (!keepDates.has(brtDateStr)) {
         delete cache[id];
         count++;
       }
@@ -203,16 +203,29 @@ function pruneCache(cache) {
     }
   }
   if (count > 0) {
-    console.log(`[VTEX Sync] Removidos ${count} pedidos fora da janela de 15 dias ou sem cupom.`);
+    console.log(`[VTEX Sync] Removidos ${count} pedidos fora da janela de 15 dias.`);
   }
 }
 
 /**
- * minifyOrder ENRIQUECIDO — preserva dados de itens para análise
+ * minifyOrder ENRIQUECIDO — preserva dados de itens para análise se tiver cupom,
+ * ou guarda apenas marcador mínimo para não re-buscar pedidos sem cupom.
  */
 function minifyOrder(order) {
   if (!order) return null;
   
+  const coupon = order.marketingData?.coupon || null;
+  const hasCoupon = coupon && coupon !== 'null' && String(coupon).trim() !== '';
+
+  if (!hasCoupon) {
+    return {
+      orderId: order.orderId,
+      status: order.status,
+      creationDate: order.creationDate,
+      coupon: null
+    };
+  }
+
   const items = (order.items || []).map(item => ({
     productId: item.productId,
     skuId: item.id,
@@ -234,7 +247,7 @@ function minifyOrder(order) {
     creationDate: order.creationDate,
     value: order.value,
     sellers: (order.sellers || []).map(s => ({ id: s.id, name: s.name })),
-    coupon: order.marketingData?.coupon || null,
+    coupon: coupon,
     items,
     itemsCount: items.reduce((sum, item) => sum + (item.quantity || 0), 0)
   };
@@ -373,6 +386,7 @@ async function syncPeriod(daysAgo, cache) {
     const toFetch = orderIds.filter(id => {
       const cached = cache[id];
       if (!cached) return true;
+      if (cached.coupon === null) return false;
       if (!cached.sellers || cached.sellers.length === 0) return true;
       if (!cached.items || cached.items.length === 0) return true; // Re-fetch se sem itens
       return false;
@@ -383,6 +397,23 @@ async function syncPeriod(daysAgo, cache) {
       await fetchOrderDetails(toFetch, cache);
     }
   }
+}
+
+function saveOrdersSeed(cacheObj) {
+  if (!cacheObj) return {};
+  const seed = {};
+  for (const [id, o] of Object.entries(cacheObj)) {
+    if (o && o.coupon && o.coupon !== 'null' && String(o.coupon).trim()) {
+      seed[id] = o;
+    }
+  }
+  try {
+    fs.writeFileSync(SEED_FILE, JSON.stringify(seed), 'utf-8');
+    console.log(`[VTEX Sync] Seed salvo com ${Object.keys(seed).length} pedidos com cupom.`);
+  } catch (err) {
+    console.error('[VTEX Sync] Erro ao salvar seed:', err.message);
+  }
+  return seed;
 }
 
 async function syncVtexData(forceFull = false) {
@@ -417,6 +448,7 @@ async function syncVtexData(forceFull = false) {
     }
     pruneCache(cache);
     await saveCacheAsync(cache, CACHE_FILE);
+    saveOrdersSeed(cache);
     lastSyncTime = new Date().toISOString();
     console.log(`[VTEX Sync] Concluído com sucesso às ${lastSyncTime}. ${Object.keys(cache).length} pedidos no cache.`);
   } catch (err) {
@@ -442,4 +474,5 @@ module.exports = {
   getCategoryMap: () => loadCategoryMap(),
   resolveCategoryName,
   setOrdersSeed,
+  saveOrdersSeed,
 };

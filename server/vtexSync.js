@@ -230,10 +230,18 @@ const getDayRange = (daysAgo, startFromIso = null) => {
   }
 
   return [
-    { start: `${dateString}T03:00:00Z`, end: `${dateString}T08:59:59Z` },
-    { start: `${dateString}T09:00:00Z`, end: `${dateString}T14:59:59Z` },
-    { start: `${dateString}T15:00:00Z`, end: `${dateString}T20:59:59Z` },
-    { start: `${dateString}T21:00:00Z`, end: `${nextDayString}T02:59:59Z` }
+    { start: `${dateString}T03:00:00Z`, end: `${dateString}T04:59:59Z` }, // 00h-02h BRT
+    { start: `${dateString}T05:00:00Z`, end: `${dateString}T06:59:59Z` }, // 02h-04h BRT
+    { start: `${dateString}T07:00:00Z`, end: `${dateString}T08:59:59Z` }, // 04h-06h BRT
+    { start: `${dateString}T09:00:00Z`, end: `${dateString}T10:59:59Z` }, // 06h-08h BRT
+    { start: `${dateString}T11:00:00Z`, end: `${dateString}T12:59:59Z` }, // 08h-10h BRT
+    { start: `${dateString}T13:00:00Z`, end: `${dateString}T14:59:59Z` }, // 10h-12h BRT
+    { start: `${dateString}T15:00:00Z`, end: `${dateString}T16:59:59Z` }, // 12h-14h BRT (Window que estourou o limite de 3000 pedidos)
+    { start: `${dateString}T17:00:00Z`, end: `${dateString}T18:59:59Z` }, // 14h-16h BRT
+    { start: `${dateString}T19:00:00Z`, end: `${dateString}T20:59:59Z` }, // 16h-18h BRT
+    { start: `${dateString}T21:00:00Z`, end: `${dateString}T22:59:59Z` }, // 18h-20h BRT
+    { start: `${dateString}T23:00:00Z`, end: `${nextDayString}T00:59:59Z` }, // 20h-22h BRT
+    { start: `${nextDayString}T01:00:00Z`, end: `${nextDayString}T02:59:59Z` }  // 22h-24h BRT
   ];
 };
 

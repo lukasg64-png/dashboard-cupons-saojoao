@@ -11992,5 +11992,40 @@
     "distrital": "Luiz Kuhn",
     "municipio": "Bom Princípio",
     "uf": "RS"
+  },
+  "Pelotas 13 - Nova": {
+    "diretoria": "C",
+    "distrital": "Juliano Petrarca",
+    "coordenador": "Aron Monteiro",
+    "municipio": "Pelotas",
+    "uf": "RS"
+  },
+  "Charqueadas 3": {
+    "diretoria": "L",
+    "distrital": "Andre Jaime",
+    "coordenador": "Joao Junior Trainee",
+    "municipio": "Charqueadas",
+    "uf": "RS"
+  },
+  "Capao da Canoa 3 - Nova": {
+    "diretoria": "L",
+    "distrital": "Andre Jaime",
+    "coordenador": "Paulo Xavier",
+    "municipio": "Capao",
+    "uf": "RS"
+  },
+  "Sao Francisco do Sul 2": {
+    "diretoria": "L",
+    "distrital": "Cleiton Lima",
+    "coordenador": "Bruna Machado Trainee",
+    "municipio": "Sao",
+    "uf": "RS"
+  },
+  "Guaiba 11": {
+    "diretoria": "L",
+    "distrital": "Larissa Azambuja",
+    "coordenador": "Fernanda Meireles",
+    "municipio": "Guaiba",
+    "uf": "RS"
   }
 }

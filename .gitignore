@@ -1,0 +1,10 @@
+node_modules/
+server/data/vtex_orders_cache.json
+server/data/vtex_orders_seed.json
+server/data/cupons_history.db
+server/data/cupons_history.db-wal
+server/data/cupons_history.db-shm
+dist/
+.env
+__pycache__/
+*.pyc

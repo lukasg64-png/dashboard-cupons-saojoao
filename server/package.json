@@ -1,0 +1,14 @@
+{
+  "name": "dashboard-cupons-server",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@google-cloud/storage": "^7.14.0",
+    "axios": "^1.7.9",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "multer": "^1.4.5-lts.1"
+  }
+}

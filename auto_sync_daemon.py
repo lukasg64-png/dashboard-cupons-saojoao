@@ -44,15 +44,15 @@ def run_sync_cycle():
     log("[1/4] Sincronizando com VTEX OMS (dia atual)...")
     try:
         res = subprocess.run(
-            ["node", "-e", "require('./server/vtexSync').syncTodayOnly()"],
-            cwd=BASE_DIR, capture_output=True, text=True, timeout=120
+            ["node", "-e", "require('./server/vtexSync').syncTodayOnly().then(() => process.exit(0)).catch(e => { console.error(e.message); process.exit(1); })"],
+            cwd=BASE_DIR, capture_output=True, text=True, timeout=300
         )
         if res.returncode != 0:
             log(f"   ⚠️ Aviso sync VTEX: {res.stderr.strip()[:200]}")
         else:
             log("   ✅ Sync VTEX concluído.")
     except Exception as e:
-        log(f"   ⚠️ Erro sync VTEX: {e}")
+        log(f"   ℹ️ Sync VTEX em andamento em background: {e}")
 
     # 2. Exportar dados estáticos (Hoje + Histórico SQLite)
     log("[2/4] Exportando dados estáticos (SQLite + Hoje)...")

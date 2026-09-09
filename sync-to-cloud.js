@@ -20,8 +20,8 @@ const path = require('path');
 const axios = require('axios');
 const vtexSync = require('./server/vtexSync');
 
-const RENDER_URL = process.env.RENDER_URL || 'https://dashboard-cupons-saojoao.onrender.com';
-const ADMIN_TOKEN = 'sjdigital-sync-2026';
+const RENDER_URL = process.env.RENDER_URL || 'https://dashboard-cupons-saojoao-s9ym.onrender.com';
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'sjdigital-sync-2026';
 const CACHE_FILE = path.join(__dirname, 'server', 'data', 'vtex_orders_cache.json');
 const SEED_FILE = path.join(__dirname, 'server', 'data', 'vtex_orders_seed.json');
 const UTC_OFFSET = -3;

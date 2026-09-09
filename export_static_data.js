@@ -23,57 +23,59 @@ async function exportStaticData() {
   let couponsData = null;
   let filtersData = null;
 
+  console.log('   Consultando histórico completo do SQLite...');
+  const historyDB = require('./server/historyDB');
+  const vtexSync = require('./server/vtexSync');
+  
+  // 1. Histórico completo do SQLite (Agosto todo + dias fechados de Setembro)
+  const allHistory = historyDB.queryByDateRange('2020-01-01', '2099-12-31');
+  console.log(`   ✅ Obtidos ${allHistory.length} pedidos históricos do SQLite.`);
+
+  // 2. Pedidos de hoje
+  let todayOrders = [];
   try {
-    console.log('   Tentando obter dados do servidor local (localhost:3007)...');
-    const [cRes, fRes] = await Promise.all([
-      axios.get('http://localhost:3007/api/coupons', { timeout: 15000 }),
-      axios.get('http://localhost:3007/api/filters', { timeout: 15000 }),
-    ]);
-
-    if (cRes.data && cRes.data.status === 'ok') {
-      couponsData = cRes.data;
-      filtersData = fRes.data;
-      console.log('   Obtidos ' + (couponsData.data ? couponsData.data.length : 0) + ' pedidos do servidor local.');
+    const todayRes = await axios.get('http://localhost:3007/api/coupons?dateMode=hoje', { timeout: 10000 });
+    if (todayRes.data && todayRes.data.data) {
+      todayOrders = todayRes.data.data;
+      console.log(`   ✅ Obtidos ${todayOrders.length} pedidos de hoje do servidor local.`);
     }
-  } catch (err) {
-    console.log('   Servidor local nao respondeu. Lendo diretamente do SQLite...');
+  } catch (e) {
+    // se não rodando http, pega do cache se houver
+    console.log('   ℹ️ Servidor HTTP não respondeu para hoje, prosseguindo com dados locais.');
   }
 
-  if (!couponsData) {
-    try {
-      const historyDB = require('./server/historyDB');
-      const allHistory = historyDB.queryByDateRange('2020-01-01', '2099-12-31');
-      couponsData = {
-        status: 'ok',
-        totalOrders: allHistory.length,
-        count: allHistory.length,
-        data: allHistory,
-        sync: { isSyncing: false, lastSyncTime: new Date().toISOString() },
-        historyStats: historyDB.getStats(),
-      };
+  // Combinar e deduplicar
+  const orderMap = new Map();
+  allHistory.forEach(o => orderMap.set(o.orderId, o));
+  todayOrders.forEach(o => orderMap.set(o.orderId, o));
+  const combinedOrders = Array.from(orderMap.values());
+  console.log(`   📊 Total combinado para exportação: ${combinedOrders.length} pedidos.`);
 
-      const diretorias = Array.from(new Set(allHistory.map(o => o.diretoria).filter(Boolean))).sort();
-      const distritais = Array.from(new Set(allHistory.map(o => o.distrital).filter(Boolean))).sort();
-      const coordenadores = Array.from(new Set(allHistory.map(o => o.coordenador).filter(Boolean))).sort();
-      const filiais = Array.from(new Set(allHistory.map(o => o.store).filter(Boolean))).sort();
-      const cupons = Array.from(new Set(allHistory.map(o => o.coupon).filter(Boolean))).sort();
+  couponsData = {
+    status: 'ok',
+    totalOrders: combinedOrders.length,
+    count: combinedOrders.length,
+    data: combinedOrders,
+    sync: { isSyncing: false, lastSyncTime: new Date().toISOString() },
+    historyStats: historyDB.getStats(),
+  };
 
-      filtersData = {
-        status: 'ok',
-        diretorias,
-        distritais,
-        coordenadores,
-        filiais,
-        cupons,
-        grupos: [],
-        categorias: [],
-      };
-      console.log('   Extraidos ' + allHistory.length + ' pedidos do SQLite.');
-    } catch (e) {
-      console.error('Falha ao extrair do SQLite:', e.message);
-      process.exit(1);
-    }
-  }
+  const diretorias = Array.from(new Set(combinedOrders.map(o => o.diretoria).filter(Boolean))).sort();
+  const distritais = Array.from(new Set(combinedOrders.map(o => o.distrital).filter(Boolean))).sort();
+  const coordenadores = Array.from(new Set(combinedOrders.map(o => o.coordenador).filter(Boolean))).sort();
+  const filiais = Array.from(new Set(combinedOrders.map(o => o.store).filter(Boolean))).sort();
+  const cupons = Array.from(new Set(combinedOrders.map(o => o.coupon).filter(Boolean))).sort();
+
+  filtersData = {
+    status: 'ok',
+    diretorias,
+    distritais,
+    coordenadores,
+    filiais,
+    cupons,
+    grupos: [],
+    categorias: [],
+  };
 
   const couponsJson = JSON.stringify(couponsData);
   const filtersJson = JSON.stringify(filtersData);

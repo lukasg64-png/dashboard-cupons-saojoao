@@ -42,17 +42,31 @@ def run_sync_cycle():
 
     # 1. Sincronizar dia atual da VTEX para memória
     log("[1/4] Sincronizando com VTEX OMS (dia atual)...")
+    synced_via_api = False
     try:
-        res = subprocess.run(
-            ["node", "-e", "require('./server/vtexSync').syncTodayOnly().then(() => process.exit(0)).catch(e => { console.error(e.message); process.exit(1); })"],
-            cwd=BASE_DIR, capture_output=True, text=True, timeout=300
-        )
-        if res.returncode != 0:
-            log(f"   ⚠️ Aviso sync VTEX: {res.stderr.strip()[:200]}")
-        else:
-            log("   ✅ Sync VTEX concluído.")
-    except Exception as e:
-        log(f"   ℹ️ Sync VTEX em andamento em background: {e}")
+        import urllib.request
+        req = urllib.request.Request("http://localhost:3007/api/vtex-sync", data=b"{}")
+        req.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            if resp.status == 200:
+                log("   ✅ Sync incremental disparado com sucesso via servidor local (porta 3007).")
+                synced_via_api = True
+                time.sleep(5)  # Breve pausa para o lote inicial
+    except Exception:
+        pass
+
+    if not synced_via_api:
+        try:
+            res = subprocess.run(
+                ["node", "-e", "require('./server/vtexSync').syncTodayOnly().then(() => process.exit(0)).catch(e => { console.error(e.message); process.exit(1); })"],
+                cwd=BASE_DIR, capture_output=True, text=True, timeout=120
+            )
+            if res.returncode != 0:
+                log(f"   ⚠️ Aviso sync VTEX: {res.stderr.strip()[:200]}")
+            else:
+                log("   ✅ Sync VTEX concluído via CLI.")
+        except Exception as e:
+            log(f"   ℹ️ Sync VTEX em background: {e}")
 
     # 2. Exportar dados estáticos (Hoje + Histórico SQLite)
     log("[2/4] Exportando dados estáticos (SQLite + Hoje)...")

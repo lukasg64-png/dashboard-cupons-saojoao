@@ -40,6 +40,8 @@ const baseNoNumKeysMap = new Map();
 function normalizeStoreName(str) {
   if (!str) return '';
   return str
+    .replace(/\u0430/g, 'a')
+    .replace(/\u0441/g, 'c')
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -93,11 +95,14 @@ const SPECIAL_VTEX_TO_CSV = {
   'sta terez de itaipu': 'santa terezinha do itaipu',
   'santo antonio missoes': 'santo antonio das missoes',
   'caxias 21': 'caxias 20',
+  'caxias 49': 'caxias 49 - neobus',
 };
 
 function cleanVtexSeller(sellerName) {
   if (!sellerName) return '';
+  if (filiaisCadastro[sellerName]) return sellerName;
   let cleaned = sellerName.replace(/\s*-\s*[\d\.\/\-]{11,25}\s*-\s*\d+\s*$/i, '').trim();
+  if (filiaisCadastro[cleaned]) return cleaned;
   if (cleaned === sellerName && sellerName.includes(' - ')) {
     const parts = sellerName.split(' - ');
     if (parts.length >= 3 && /^\d+$/.test(parts[parts.length - 1].trim())) {

@@ -75,6 +75,9 @@ def run_sync_cycle():
             ["node", "export_static_data.js"],
             cwd=BASE_DIR, capture_output=True, text=True, timeout=60
         )
+        if res.returncode != 0:
+            log(f"   ❌ Erro na exportação estática: {res.stderr.strip()[:300]}")
+            return False
         log("   ✅ Dados exportados.")
     except Exception as e:
         log(f"   ❌ Erro na exportação estática: {e}")
@@ -87,6 +90,9 @@ def run_sync_cycle():
             ["npm.cmd", "run", "build"],
             cwd=BASE_DIR, capture_output=True, text=True, timeout=90
         )
+        if res.returncode != 0:
+            log(f"   ❌ Erro no build Vite (código {res.returncode}): {res.stderr.strip()[:300]}")
+            return False
         log("   ✅ Build Vite concluído.")
     except Exception as e:
         log(f"   ❌ Erro no build Vite: {e}")

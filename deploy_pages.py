@@ -2,8 +2,9 @@ import subprocess, os, shutil, tempfile
 
 def deploy_gh_pages():
     dist_dir = os.path.abspath('dist')
-    if not os.path.exists(dist_dir):
-        print('Erro: dist/ nao existe. Execute npm run build primeiro.')
+    index_file = os.path.join(dist_dir, 'index.html')
+    if not os.path.exists(dist_dir) or not os.path.exists(index_file):
+        print('Erro: dist/index.html nao existe! O build Vite falhou ou nao foi executado.')
         return False
         
     temp_dir = tempfile.mkdtemp()

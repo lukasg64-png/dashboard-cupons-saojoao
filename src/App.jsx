@@ -23,30 +23,39 @@ function getBrtDateStr(daysAgo = 0) {
   return brt.toISOString().slice(0, 10);
 }
 
-function filterByDate(orders, dateMode) {
-  let startDate, endDate;
+function filterByDate(orders, dateMode, customStartDate, customEndDate) {
+  let startDate = customStartDate;
+  let endDate = customEndDate;
   const today = getBrtDateStr(0);
-  switch (dateMode) {
-    case 'hoje':   startDate = endDate = today; break;
-    case 'ontem':  startDate = endDate = getBrtDateStr(1); break;
-    case '3d':     startDate = getBrtDateStr(2); endDate = today; break;
-    case '7d':     startDate = getBrtDateStr(6); endDate = today; break;
-    case '30d':    startDate = getBrtDateStr(29); endDate = today; break;
-    case 'mes_anterior': {
-      const now = new Date();
-      const brt = new Date(now.getTime() - 3 * 3600000);
-      const year = brt.getUTCFullYear();
-      const month = brt.getUTCMonth();
-      const prevMonth = month === 0 ? 11 : month - 1;
-      const prevYear = month === 0 ? year - 1 : year;
-      startDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
-      const lastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
-      endDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-      break;
+
+  if (dateMode && dateMode !== 'custom') {
+    switch (dateMode) {
+      case 'hoje':   startDate = endDate = today; break;
+      case 'ontem':  startDate = endDate = getBrtDateStr(1); break;
+      case '3d':     startDate = getBrtDateStr(2); endDate = today; break;
+      case '7d':     startDate = getBrtDateStr(6); endDate = today; break;
+      case '15d':    startDate = getBrtDateStr(14); endDate = today; break;
+      case '30d':    startDate = getBrtDateStr(29); endDate = today; break;
+      case 'mes_anterior': {
+        const now = new Date();
+        const brt = new Date(now.getTime() - 3 * 3600000);
+        const year = brt.getUTCFullYear();
+        const month = brt.getUTCMonth();
+        const prevMonth = month === 0 ? 11 : month - 1;
+        const prevYear = month === 0 ? year - 1 : year;
+        startDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+        const lastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
+        endDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        break;
+      }
+      default:
+        break;
     }
-    case '15d':
-    default:       startDate = getBrtDateStr(14); endDate = today; break;
   }
+
+  if (!startDate) startDate = getBrtDateStr(14);
+  if (!endDate) endDate = today;
+
   return orders.filter(o => o.date >= startDate && o.date <= endDate);
 }
 
@@ -61,20 +70,30 @@ export default function App() {
   const [filterOpts, setFilterOpts] = useState({});
   const [relations, setRelations] = useState({});
 
-  const [filters, setFilters] = useState({
-    dateMode: '15d',
-    diretoria: 'all',
-    distrital: 'all',
-    coordenador: 'all',
-    filial: 'all',
-    cupom: 'all',
-    grupo: 'all',
-    categoria: 'all',
-    item: 'all',
+  const [filters, setFilters] = useState(() => {
+    const today = getBrtDateStr(0);
+    const fifteenAgo = getBrtDateStr(14);
+    return {
+      dateMode: '15d',
+      startDate: fifteenAgo,
+      endDate: today,
+      diretoria: 'all',
+      distrital: 'all',
+      coordenador: 'all',
+      filial: 'all',
+      cupom: 'all',
+      grupo: 'all',
+      categoria: 'all',
+      item: 'all',
+    };
   });
 
-  const setFilter = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  const setFilter = useCallback((keyOrObj, value) => {
+    if (typeof keyOrObj === 'object' && keyOrObj !== null) {
+      setFilters(prev => ({ ...prev, ...keyOrObj }));
+    } else {
+      setFilters(prev => ({ ...prev, [keyOrObj]: value }));
+    }
   }, []);
 
   // Fetch data
@@ -134,7 +153,7 @@ export default function App() {
   // Filter data client-side
   const filteredData = useMemo(() => {
     let d = rawData;
-    d = filterByDate(d, filters.dateMode);
+    d = filterByDate(d, filters.dateMode, filters.startDate, filters.endDate);
     if (filters.diretoria !== 'all') d = d.filter(o => o.diretoria === filters.diretoria);
     if (filters.distrital !== 'all') d = d.filter(o => o.distrital === filters.distrital);
     if (filters.coordenador !== 'all') d = d.filter(o => o.coordenador === filters.coordenador);

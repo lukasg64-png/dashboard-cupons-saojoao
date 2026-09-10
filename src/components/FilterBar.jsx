@@ -11,6 +11,13 @@ const DATE_MODES = [
   { key: 'mes_anterior', label: 'Mês Anterior' },
 ];
 
+function getBrtDateStr(daysAgo = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const brt = new Date(d.getTime() - 3 * 3600000);
+  return brt.toISOString().slice(0, 10);
+}
+
 export default function FilterBar({
   filters,
   setFilter,
@@ -23,8 +30,44 @@ export default function FilterBar({
 }) {
   const { 
     diretoria, distrital, coordenador, filial, cupom, dateMode,
+    startDate, endDate,
     grupo = 'all', categoria = 'all', item = 'all'
   } = filters;
+
+  const handlePresetClick = (key) => {
+    let sDate, eDate;
+    const today = getBrtDateStr(0);
+    switch (key) {
+      case 'hoje':   sDate = eDate = today; break;
+      case 'ontem':  sDate = eDate = getBrtDateStr(1); break;
+      case '3d':     sDate = getBrtDateStr(2); eDate = today; break;
+      case '7d':     sDate = getBrtDateStr(6); eDate = today; break;
+      case '15d':    sDate = getBrtDateStr(14); eDate = today; break;
+      case '30d':    sDate = getBrtDateStr(29); eDate = today; break;
+      case 'mes_anterior': {
+        const now = new Date();
+        const brt = new Date(now.getTime() - 3 * 3600000);
+        const year = brt.getUTCFullYear();
+        const month = brt.getUTCMonth();
+        const prevMonth = month === 0 ? 11 : month - 1;
+        const prevYear = month === 0 ? year - 1 : year;
+        sDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+        const lastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
+        eDate = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        break;
+      }
+      default: sDate = getBrtDateStr(14); eDate = today; break;
+    }
+    setFilter({ dateMode: key, startDate: sDate, endDate: eDate });
+  };
+
+  const handleCustomDateChange = (field, val) => {
+    if (!val) return;
+    setFilter({
+      dateMode: 'custom',
+      [field]: val
+    });
+  };
 
   // Cascade: filtrar opções hierárquicas de acordo com seleção superior
   let distritaisOpts = options.distritais || [];
@@ -53,17 +96,25 @@ export default function FilterBar({
   }
 
   const hasActiveFilters = diretoria !== 'all' || distrital !== 'all' || coordenador !== 'all' || 
-    filial !== 'all' || cupom !== 'all' || grupo !== 'all' || categoria !== 'all' || item !== 'all';
+    filial !== 'all' || cupom !== 'all' || grupo !== 'all' || categoria !== 'all' || item !== 'all' ||
+    dateMode !== '15d';
 
   const clearAllFilters = () => {
-    setFilter('diretoria', 'all');
-    setFilter('distrital', 'all');
-    setFilter('coordenador', 'all');
-    setFilter('filial', 'all');
-    setFilter('cupom', 'all');
-    setFilter('grupo', 'all');
-    setFilter('categoria', 'all');
-    setFilter('item', 'all');
+    const today = getBrtDateStr(0);
+    const fifteenAgo = getBrtDateStr(14);
+    setFilter({
+      dateMode: '15d',
+      startDate: fifteenAgo,
+      endDate: today,
+      diretoria: 'all',
+      distrital: 'all',
+      coordenador: 'all',
+      filial: 'all',
+      cupom: 'all',
+      grupo: 'all',
+      categoria: 'all',
+      item: 'all',
+    });
   };
 
   return (
@@ -72,16 +123,43 @@ export default function FilterBar({
       {/* Período */}
       <div className="filter-group">
         <span className="filter-label">Período</span>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {DATE_MODES.map(dm => (
-            <button
-              key={dm.key}
-              className={`date-btn ${dateMode === dm.key ? 'active' : ''}`}
-              onClick={() => setFilter('dateMode', dm.key)}
-            >
-              {dm.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {DATE_MODES.map(dm => (
+              <button
+                key={dm.key}
+                className={`date-btn ${dateMode === dm.key ? 'active' : ''}`}
+                onClick={() => handlePresetClick(dm.key)}
+              >
+                {dm.label}
+              </button>
+            ))}
+            {dateMode === 'custom' && (
+              <button className="date-btn active" style={{ cursor: 'default', background: '#0066cc', color: '#fff' }}>
+                Personalizado
+              </button>
+            )}
+          </div>
+
+          {/* Filtro de Data (Inputs De / Até idênticos à imagem) */}
+          <div className="filter-date-range-container">
+            <input
+              type="date"
+              className="filter-date-input"
+              value={startDate || ''}
+              onChange={e => handleCustomDateChange('startDate', e.target.value)}
+              onClick={e => { if (e.target.showPicker) e.target.showPicker(); }}
+              title="Data Inicial"
+            />
+            <input
+              type="date"
+              className="filter-date-input"
+              value={endDate || ''}
+              onChange={e => handleCustomDateChange('endDate', e.target.value)}
+              onClick={e => { if (e.target.showPicker) e.target.showPicker(); }}
+              title="Data Final"
+            />
+          </div>
         </div>
       </div>
 

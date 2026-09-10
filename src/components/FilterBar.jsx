@@ -18,6 +18,8 @@ export default function FilterBar({
   relations = {},
   onRefresh,
   refreshing = false,
+  lastSyncStr = '',
+  nextSyncStr = '',
 }) {
   const { 
     diretoria, distrital, coordenador, filial, cupom, dateMode,
@@ -216,8 +218,15 @@ export default function FilterBar({
         </select>
       </div>
 
-      {/* Botões de Ação (Limpar Filtros e Refresh) */}
-      <div className="filter-group" style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginLeft: 'auto' }}>
+      {/* Botões de Ação (Status de Sincronismo, Limpar Filtros e Refresh) */}
+      <div className="filter-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 'auto', alignSelf: 'flex-end', paddingBottom: 2 }}>
+        {lastSyncStr && (
+          <div className="filter-sync-notice" title="Rotina de atualização automática a cada 1 hora">
+            <span>🕒 Atualizado: <strong>{lastSyncStr}</strong></span>
+            <span style={{ opacity: 0.35 }}>•</span>
+            <span>Próxima carga: <strong>{nextSyncStr}</strong></span>
+          </div>
+        )}
         {hasActiveFilters && (
           <button 
             className="date-btn" 
@@ -228,7 +237,7 @@ export default function FilterBar({
             <X size={12} /> Limpar
           </button>
         )}
-        <button className="filter-btn" onClick={onRefresh} disabled={refreshing}>
+        <button className="filter-btn" onClick={onRefresh} disabled={refreshing} title="Atualizar agora sob demanda">
           <RefreshCw size={13} className={refreshing ? 'spin' : ''} />
           {refreshing ? 'Sync...' : 'Atualizar'}
         </button>

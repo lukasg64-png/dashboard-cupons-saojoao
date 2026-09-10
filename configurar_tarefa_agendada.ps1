@@ -16,14 +16,14 @@ Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Silent
 # Criar ação
 $Action = New-ScheduledTaskAction -Execute $NodePath -Argument "`"$Arguments`"" -WorkingDirectory $ScriptDir
 
-# Criar gatilho: repete a cada 30 minutos indefinidamente
-$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration ([TimeSpan]::MaxValue)
+# Criar gatilho: repete a cada 1 hora indefinidamente
+$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
 
 # Configurações adicionais
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable
 
 # Registrar tarefa
-Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description "Sincroniza pedidos com cupom da VTEX para a nuvem (Render) a cada 30 minutos"
+Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description "Sincroniza pedidos com cupom da VTEX a cada 1 hora (60 min)"
 
 Write-Host "Tarefa agendada '$TaskName' criada com sucesso!" -ForegroundColor Green
-Write-Host "Ela será executada a cada 30 minutos em segundo plano automaticamente." -ForegroundColor Green
+Write-Host "Ela será executada a cada 1 hora em segundo plano automaticamente." -ForegroundColor Green

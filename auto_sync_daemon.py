@@ -21,7 +21,7 @@ if hasattr(sys.stdout, 'reconfigure'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INTERVAL_MINUTES = 30
+INTERVAL_MINUTES = 60
 
 def log(msg):
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")

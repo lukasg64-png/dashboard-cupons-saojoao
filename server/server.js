@@ -918,10 +918,10 @@ app.listen(PORT, () => {
     }
   }, 15000);
 
-  // 3. Sync incremental a cada 30 minutos
+  // 3. Sync incremental a cada 60 minutos (1h em 1h)
   setInterval(() => {
     vtexSync.syncTodayOnly().catch(err => console.error('[Interval Sync]', err.message));
-  }, 30 * 60 * 1000);
+  }, 60 * 60 * 1000);
 
   // 4. Cron: consolidar ontem à 00:05 BRT (03:05 UTC)
   cron.schedule('5 3 * * *', async () => {
@@ -936,5 +936,7 @@ app.listen(PORT, () => {
   }, { timezone: 'UTC' });
 
   console.log(`⏰ Cron ativo: consolidação diária às 00:05 BRT`);
-  console.log(`🔄 Sync incremental: a cada 30 minutos\n`);
+  console.log(`🔄 Sync incremental: a cada 60 minutos (1h em 1h)\n`);
 });
+
+module.exports = { app, enrichOrders };

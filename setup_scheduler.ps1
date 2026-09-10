@@ -21,15 +21,15 @@ if ($oldTask) {
 
 $Action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "//B //Nologo `""" + $VbsPath + "`"" `""" + $BatPath + "`""" -WorkingDirectory $ScriptDir
 
-$Trigger = New-ScheduledTaskTrigger -Daily -At '00:15'
-$Trigger.Repetition = (New-ScheduledTaskTrigger -Once -At '00:15' -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Days 1)).Repetition
+$Trigger = New-ScheduledTaskTrigger -Daily -At '00:00'
+$Trigger.Repetition = (New-ScheduledTaskTrigger -Once -At '00:00' -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 1)).Repetition
 
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew
 
 try {
-    Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description 'Sincronizacao automatica a cada 30 min do Dashboard Cupons no GitHub Pages'% -Force | Out-Null
+    Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description 'Sincronizacao automatica a cada 1 hora do Dashboard Cupons no GitHub Pages' -Force | Out-Null
     Write-Host "`n[OK] Tarefa '$TaskName' registrada com sucesso!" -ForegroundColor Green
-    Write-Host 'O Dashboard atualizara e enviara para o GitHub Pages a nova versao a cada 30 minutos.' -ForegroundColor Green
+    Write-Host 'O Dashboard atualizara e enviara para o GitHub Pages a nova versao a cada 1 hora.' -ForegroundColor Green
     Write-Host 'Link Online: https://lukasg64-png.github.io/dashboard-cupons-saojoao/' -ForegroundColor Cyan
 } catch {
     Write-Warning "Nao foi possivel registrar a tarefa: $_"

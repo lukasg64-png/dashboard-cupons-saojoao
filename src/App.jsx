@@ -167,6 +167,27 @@ export default function App() {
     return d;
   }, [rawData, filters]);
 
+  const todayDateStr = useMemo(() => getBrtDateStr(0), []);
+  const todayOrdersCount = useMemo(() => {
+    return rawData.filter(o => o.date === todayDateStr).length;
+  }, [rawData, todayDateStr]);
+
+  const { lastSyncStr, nextSyncStr } = useMemo(() => {
+    if (!syncState?.lastSyncTime) {
+      return { lastSyncStr: '--:--', nextSyncStr: '--:--' };
+    }
+    const lastD = new Date(syncState.lastSyncTime);
+    const lastSyncStr = lastD.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    let nextD;
+    if (syncState.nextSyncTime) {
+      nextD = new Date(syncState.nextSyncTime);
+    } else {
+      nextD = new Date(lastD.getTime() + 60 * 60 * 1000);
+    }
+    const nextSyncStr = nextD.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return { lastSyncStr, nextSyncStr };
+  }, [syncState]);
+
   return (
     <div className="app-layout">
       {/* ── Apple Global Nav (44px, Pure Black) ───────────────────────────── */}
@@ -179,23 +200,29 @@ export default function App() {
           <span className="global-nav-tag">Diretorias Cintia &amp; Laerti</span>
         </div>
         <div className="global-nav-right">
-          <div className="global-nav-badge">
-            <span className={`global-nav-dot ${syncState?.isSyncing ? 'syncing' : ''}`} />
-            {syncState?.isSyncing
-              ? `Sincronizando ${syncState.progressPercent}%`
-              : syncState?.isBackfilling
-                ? `Backfill ${syncState.backfillProgress?.current}/${syncState.backfillProgress?.total}`
-                : `${new Intl.NumberFormat('pt-BR').format(totalOrders)} hoje`
-            }
-          </div>
-          {historyStats && (
-            <span style={{ color: '#86868b', fontSize: 11 }}>
-              📦 {new Intl.NumberFormat('pt-BR').format(historyStats.totalOrders)} histórico ({historyStats.daysConsolidated}d)
+          {/* Badge Executivo: Última e Próxima Atualização (1h em 1h) */}
+          <div className="global-sync-pill" title="Atualização automática programada a cada 1 hora">
+            <span className={`sync-pulse-dot ${syncState?.isSyncing ? 'syncing' : ''}`} />
+            <span className="sync-item">
+              Atualizado: <strong>{lastSyncStr}</strong>
             </span>
-          )}
-          {syncState?.lastSyncTime && (
-            <span style={{ color: '#86868b', fontSize: 11 }}>
-              Sync: {new Date(syncState.lastSyncTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            <span className="sync-sep">•</span>
+            <span className="sync-item next">
+              Próxima: <strong>{nextSyncStr}</strong>
+            </span>
+            <span className="sync-freq-badge">1h em 1h</span>
+          </div>
+
+          <div className="global-nav-badge">
+            <span className="global-nav-dot" />
+            <span>{new Intl.NumberFormat('pt-BR').format(todayOrdersCount)} hoje</span>
+            <span className="badge-divider">|</span>
+            <span style={{ opacity: 0.85 }}>{new Intl.NumberFormat('pt-BR').format(totalOrders || rawData.length)} total</span>
+          </div>
+
+          {historyStats && (
+            <span className="global-history-text">
+              📦 {historyStats.daysConsolidated}d consolidado
             </span>
           )}
         </div>
@@ -233,6 +260,8 @@ export default function App() {
           relations={relations}
           onRefresh={handleRefresh}
           refreshing={refreshing}
+          lastSyncStr={lastSyncStr}
+          nextSyncStr={nextSyncStr}
         />
 
         {/* Loading state */}

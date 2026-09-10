@@ -27,6 +27,28 @@ async function exportStaticData() {
   const historyDB = require('./server/historyDB');
   const vtexSync = require('./server/vtexSync');
   
+  // 0. Safeguard: verificar se o dia anterior (ontem) está devidamente consolidado no SQLite
+  function getBrtDateStr(daysAgo = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    const brt = new Date(d.getTime() - 3 * 3600000);
+    return brt.toISOString().slice(0, 10);
+  }
+  const yesterday = getBrtDateStr(1);
+  if (!historyDB.hasDate(yesterday)) {
+    console.log(`   ⚠️ Ontem (${yesterday}) não estava consolidado no SQLite! Consolidando agora...`);
+    try {
+      await axios.post(`http://localhost:3007/api/consolidate?date=${yesterday}`, {}, { timeout: 30000 });
+      console.log(`   ✅ Consolidação de ${yesterday} disparada com sucesso.`);
+      // Breve pausa para gravação no SQLite
+      await new Promise(r => setTimeout(r, 4000));
+    } catch (e) {
+      console.log(`   ℹ️ Aviso na auto-consolidação de ontem: ${e.message}`);
+    }
+  } else {
+    console.log(`   ✅ Dia anterior (${yesterday}) validado e consolidado no SQLite.`);
+  }
+
   // 1. Histórico completo do SQLite (Agosto todo + dias fechados de Setembro)
   const allHistory = historyDB.queryByDateRange('2020-01-01', '2099-12-31');
   console.log(`   ✅ Obtidos ${allHistory.length} pedidos históricos do SQLite.`);
@@ -40,8 +62,14 @@ async function exportStaticData() {
       console.log(`   ✅ Obtidos ${todayOrders.length} pedidos de hoje do servidor local.`);
     }
   } catch (e) {
-    // se não rodando http, pega do cache se houver
     console.log('   ℹ️ Servidor HTTP não respondeu para hoje, prosseguindo com dados locais.');
+    try {
+      const todayMem = vtexSync.getTodayCache();
+      const memVals = Object.values(todayMem || {});
+      if (memVals.length > 0) {
+        console.log(`   ✅ Recuperados ${memVals.length} pedidos de hoje diretamente da memória.`);
+      }
+    } catch (errMem) {}
   }
 
   // Combinar e deduplicar
@@ -49,14 +77,25 @@ async function exportStaticData() {
   allHistory.forEach(o => orderMap.set(o.orderId, o));
   todayOrders.forEach(o => orderMap.set(o.orderId, o));
   const combinedOrders = Array.from(orderMap.values());
-  console.log(`   📊 Total combinado para exportação: ${combinedOrders.length} pedidos.`);
+  console.log(`   📊 Total combinado para exportação: ${combinedOrders.length} pedidos (${todayOrders.length} de hoje).`);
+
+  const now = new Date();
+  const nextSync = new Date(now.getTime() + 60 * 60 * 1000); // Exatamente 1 hora
 
   couponsData = {
     status: 'ok',
     totalOrders: combinedOrders.length,
+    todayOrdersCount: todayOrders.length,
     count: combinedOrders.length,
     data: combinedOrders,
-    sync: { isSyncing: false, lastSyncTime: new Date().toISOString() },
+    sync: { 
+      isSyncing: false, 
+      lastSyncTime: now.toISOString(),
+      nextSyncTime: nextSync.toISOString(),
+      intervalMinutes: 60,
+      todayOrdersCount: todayOrders.length,
+      totalOrdersCount: combinedOrders.length
+    },
     historyStats: historyDB.getStats(),
   };
 

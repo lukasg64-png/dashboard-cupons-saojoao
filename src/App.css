@@ -136,6 +136,88 @@
   to { opacity: 1; }
 }
 
+/* ── Global Nav Sync & Schedule Pill ────────────────────────────────────── */
+.global-sync-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: var(--rounded-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--body-on-dark);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: -0.1px;
+}
+
+.sync-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34c759;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
+}
+
+.sync-pulse-dot.syncing {
+  background: #ff9500;
+  box-shadow: 0 0 6px rgba(255, 149, 0, 0.6);
+  animation: pulse-dot 0.8s infinite alternate;
+}
+
+.global-sync-pill strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.global-sync-pill .sync-item.next strong {
+  color: #2997ff;
+}
+
+.global-sync-pill .sync-sep {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+}
+
+.sync-freq-badge {
+  background: rgba(41, 151, 255, 0.18);
+  color: #2997ff;
+  border: 1px solid rgba(41, 151, 255, 0.32);
+  border-radius: 9999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.global-history-text {
+  color: var(--body-muted);
+  font-size: 11px;
+}
+
+.badge-divider {
+  opacity: 0.35;
+  margin: 0 3px;
+}
+
+/* ── FilterBar Sync Notice ──────────────────────────────────────────────── */
+.filter-sync-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--rounded-pill);
+  background: rgba(0, 102, 204, 0.06);
+  border: 1px solid rgba(0, 102, 204, 0.15);
+  font-size: 11px;
+  color: #1d1d1f;
+  margin-left: auto;
+}
+
+.filter-sync-notice strong {
+  color: #0066cc;
+}
+
 /* ── Apple Sub-Nav Frosted (52px, Glass) ──────────────────────────────────── */
 .sub-nav-frosted {
   height: 52px;
